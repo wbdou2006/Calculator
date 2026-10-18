@@ -1,0 +1,832 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Investment Growth Calculator</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600&display=swap">
+<style>
+/* Layout: one calculator sheet. Inputs beside the summary on top; the year table beside the chart and what-if grid below. Stacks to one column on phones. */
+:root {
+  --bg: #F3F5F8;
+  --sheet: #FFFFFF;
+  --ink: #1C2B39;
+  --muted: #566373;
+  --line: #E2E6EC;
+  --line-strong: #CBD2DB;
+  --head: #EEF1F5;
+  --head-ink: #3A4757;
+  --input-bg: #FFF5D6;
+  --input-line: #D9B655;
+  --input-ink: #1B4F8A;
+  --initial: #6AA0F0;
+  --invested: #2A66B0;
+  --growth: #D9951E;
+  --hit-bg: #FCEBC2;
+  --hit-ink: #5E3D07;
+  --mile: #8A5A0E;
+  --heat-lo: #F3F6FA;
+  --heat-hi: #9FB9D4;
+  --focus: #1B4F8A;
+  --real-bg: #E8EEF5;
+  --real-col: #F6F8FB;
+  --real-ink: #2F4052;
+  --hover-band: #EEF1F5;
+  --tip-bg: #FFFFFF;
+  --shadow: rgba(28, 43, 57, 0.14);
+  --font-display: "Iowan Old Style", "Source Serif 4", Georgia, serif;
+  --font-body: "Helvetica Neue", Helvetica, system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121A23; --sheet: #18202A; --ink: #E4E9EF; --muted: #9AA6B4; --line: #26303C; --line-strong: #364352;
+    --head: #1F2833; --head-ink: #C3CCD7; --input-bg: #2E2814; --input-line: #7A6530; --input-ink: #A8CBF5;
+    --initial: #2C5CB6; --invested: #5A95E4; --growth: #BF7F16; --hit-bg: #3F3112; --hit-ink: #F3D79B;
+    --mile: #E1B567; --heat-lo: #1D2631; --heat-hi: #2F4F75; --focus: #A8CBF5; --hover-band: #212B37; --real-bg: #23303E; --real-col: #1C2530; --real-ink: #C9D6E4;
+    --tip-bg: #1F2833; --shadow: rgba(0, 0, 0, 0.45);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121A23; --sheet: #18202A; --ink: #E4E9EF; --muted: #9AA6B4; --line: #26303C; --line-strong: #364352;
+  --head: #1F2833; --head-ink: #C3CCD7; --input-bg: #2E2814; --input-line: #7A6530; --input-ink: #A8CBF5;
+  --initial: #2C5CB6; --invested: #5A95E4; --growth: #BF7F16; --hit-bg: #3F3112; --hit-ink: #F3D79B;
+  --mile: #E1B567; --heat-lo: #1D2631; --heat-hi: #2F4F75; --focus: #A8CBF5; --hover-band: #212B37; --real-bg: #23303E; --real-col: #1C2530; --real-ink: #C9D6E4;
+  --tip-bg: #1F2833; --shadow: rgba(0, 0, 0, 0.45);
+  color-scheme: dark;
+}
+
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 14px; line-height: 1.4; }
+.wrap {
+  max-width: 1200px; margin: 0 auto; box-sizing: border-box;
+  padding-block: 32px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.sheet { background: var(--sheet); border: 1px solid var(--line); border-radius: 6px; padding: clamp(20px, 3vw, 36px); }
+.noscript { margin: 0 0 20px; padding: 10px 12px; border-radius: 4px; background: var(--hit-bg); color: var(--hit-ink); font-size: 14px; line-height: 1.45; }
+.sheet-head { padding-bottom: 20px; border-bottom: 1px solid var(--line); margin-bottom: 28px; }
+h1 { margin: 0; font-family: var(--font-display); font-size: clamp(26px, 3.2vw, 32px); font-weight: 600; line-height: 1.15; text-wrap: balance; }
+h2 { margin: 0; font-family: var(--font-display); font-size: 21px; font-weight: 600; line-height: 1.25; text-wrap: balance; }
+.sub { margin: 6px 0 0; font-size: 14px; color: var(--muted); }
+.note { margin: 4px 0 14px; font-size: 13px; line-height: 1.5; color: var(--muted); max-width: 65ch; }
+.num { font-variant-numeric: tabular-nums; }
+
+.row { display: flex; flex-wrap: wrap; gap: 48px; align-items: flex-start; }
+.row + .row { margin-top: 44px; padding-top: 36px; border-top: 1px solid var(--line); }
+.inputs { flex: 0 1 380px; min-width: 0; }
+.summary { flex: 1 1 440px; min-width: 0; display: flex; flex-direction: column; gap: 20px; }
+.band { margin-top: 48px; padding-top: 40px; border-top: 1px solid var(--line); min-width: 0; }
+
+/* inputs */
+.fields { border-top: 1px solid var(--line); }
+.field { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px 12px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.field label { font-size: 14px; }
+.box { display: flex; align-items: center; width: 150px; height: 40px; box-sizing: border-box; border: 1px solid var(--input-line); background: var(--input-bg); border-radius: 3px; }
+.box:focus-within { outline: 2px solid var(--focus); outline-offset: 2px; }
+.unit { padding: 0 2px 0 10px; font-size: 13px; color: var(--muted); }
+.unit.after { padding: 0 10px 0 2px; }
+.box input { flex: 1 1 auto; min-width: 0; height: 100%; border: 0; background: transparent; color: var(--input-ink); font: 600 16px var(--font-body); text-align: right; padding: 0 10px 0 4px; font-variant-numeric: tabular-nums; }
+.box input:focus { outline: none; }
+.box input::-webkit-inner-spin-button { opacity: 0.6; }
+.field input[type="range"] { grid-column: 1 / -1; width: 100%; margin: 0; accent-color: var(--invested); height: 20px; }
+.field input[type="range"]:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.err { grid-column: 1 / -1; margin: 0; font-size: 12px; color: var(--mile); }
+.input-foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 16px; margin-top: 12px; font-size: 12.5px; line-height: 1.5; color: var(--muted); }
+.input-foot p { margin: 0; flex: 1 1 220px; }
+.textbtn { border: 0; background: none; padding: 4px 0; min-height: 32px; font: 600 13px var(--font-body); color: var(--input-ink); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.textbtn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 2px; }
+
+/* summary */
+.big-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; }
+.big-row .big { flex-basis: 100%; margin-bottom: 10px; }
+.real-chip { display: inline-flex; align-items: baseline; gap: 6px; padding: 6px 12px; border-radius: 999px; background: var(--real-bg); color: var(--real-ink); font-size: 13px; white-space: nowrap; }
+.infl { display: inline-flex; align-items: center; gap: 2px; height: 36px; padding: 0 3px; box-sizing: border-box; border: 1px solid var(--input-line); background: var(--input-bg); color: var(--input-ink); border-radius: 999px; font-size: 13px; white-space: nowrap; align-self: center; }
+.infl-val { min-width: 84px; padding: 0 2px; text-align: center; font-weight: 600; font-variant-numeric: tabular-nums; }
+.infl-btn { display: grid; place-items: center; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--input-ink); cursor: pointer; }
+.infl-btn:active { background: var(--input-line); }
+@media (hover: hover) { .infl-btn:hover { background: var(--input-line); } }
+.infl-btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.infl-btn:disabled { opacity: 0.35; cursor: default; background: transparent; }
+.real-chip b { font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.big { font-family: var(--font-display); font-size: clamp(46px, 6.6vw, 68px); font-weight: 600; line-height: 1; font-variant-numeric: lining-nums tabular-nums; }
+.big-label { margin: 10px 0 0; font-size: 14px; color: var(--muted); }
+.split { display: flex; gap: 2px; height: 16px; border-radius: 4px; overflow: hidden; }
+.split > div { min-width: 0; }
+.seg-initial { background: var(--initial); }
+.seg-invested { background: var(--invested); }
+.seg-growth { background: var(--growth); }
+.legend-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px; }
+.key { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--head-ink); }
+.sw { width: 10px; height: 10px; border-radius: 2px; flex: none; display: inline-block; }
+.amt { margin-top: 4px; font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.share { font-size: 12px; color: var(--muted); }
+.miles { border-top: 1px solid var(--line); }
+.mile { display: flex; gap: 16px; align-items: baseline; padding: 11px 0; border-bottom: 1px solid var(--line); }
+.mile b { flex: 0 0 92px; font-size: 14px; color: var(--mile); }
+.mile span { font-size: 14px; line-height: 1.45; }
+
+/* year table */
+.scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 4px; }
+table.years { width: 100%; min-width: 700px; border-collapse: collapse; font-size: 13.5px; font-variant-numeric: tabular-nums; }
+.years th, .years td { padding: 7px 8px; text-align: right; white-space: nowrap; }
+.years thead th { background: var(--head); color: var(--head-ink); font-size: 12px; font-weight: 600; line-height: 1.25; white-space: normal; vertical-align: bottom; border-bottom: 1px solid var(--line-strong); }
+.years th:first-child, .years td:first-child { text-align: left; }
+.years tbody th { font-weight: 400; color: var(--muted); }
+.years tbody th, .years tbody td { border-bottom: 1px solid var(--line); }
+.years td.end { font-weight: 600; }
+.years td.real, .years tfoot td.real { background: var(--real-col); color: var(--real-ink); font-size: 12px; font-weight: 400; }
+.years thead th.real { color: var(--real-ink); }
+.years td.hit { background: var(--hit-bg); color: var(--hit-ink); }
+.years tfoot th, .years tfoot td { border-top: 2px solid var(--ink); font-weight: 700; color: var(--ink); }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* chart */
+.chart-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 6px 0 12px; font-size: 12px; color: var(--head-ink); }
+.chart-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.chart { position: relative; }
+.chart svg { display: block; width: 100%; height: 320px; overflow: visible; touch-action: pan-y; -webkit-tap-highlight-color: transparent; }
+.chart svg:focus-visible { outline: 2px solid var(--focus); outline-offset: 4px; border-radius: 2px; }
+.gridline { stroke: var(--line); stroke-width: 1; }
+.baseline { stroke: var(--line-strong); stroke-width: 1; }
+.tick { fill: var(--muted); font-size: 11px; font-family: var(--font-body); font-variant-numeric: tabular-nums; }
+.bar-inv { fill: var(--invested); }
+.bar-gro { fill: var(--growth); }
+.hover-band { fill: var(--hover-band); }
+.tip { position: absolute; top: 4px; z-index: 2; min-width: 180px; padding: 9px 11px; background: var(--tip-bg); border: 1px solid var(--line-strong); border-radius: 4px; box-shadow: 0 6px 20px var(--shadow); font-size: 12px; pointer-events: none; }
+.tip h3 { margin: 0 0 6px; font-size: 12.5px; font-weight: 700; color: var(--ink); }
+.tip dl { margin: 0; display: grid; grid-template-columns: auto auto; gap: 3px 14px; }
+.tip dt { display: flex; align-items: center; gap: 6px; color: var(--head-ink); }
+.tip dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; color: var(--ink); font-weight: 600; }
+.chart-hint { margin: 8px 0 0; font-size: 12px; color: var(--muted); }
+
+/* what-if grid */
+.step { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 0 0 12px; }
+.step-label { font-size: 12.5px; color: var(--head-ink); }
+.seg { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); max-width: 100%; border: 1px solid var(--line-strong); border-radius: 4px; overflow: hidden; }
+.seg label { position: relative; display: block; }
+.seg input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.seg span { display: block; min-height: 36px; line-height: 36px; padding: 0 10px; text-align: center; background: var(--sheet); color: var(--head-ink); font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.seg label + label span { border-left: 1px solid var(--line-strong); }
+.seg input:checked + span { background: var(--input-ink); color: var(--sheet); }
+.seg input:focus-visible + span { outline: 2px solid var(--focus); outline-offset: -4px; }
+.whatif-scroll { overflow-x: auto; }
+table.grid { width: 100%; max-width: 980px; min-width: 600px; border-collapse: separate; border-spacing: 2px; font-variant-numeric: tabular-nums; }
+.grid th { font-size: 12px; font-weight: 600; color: var(--head-ink); text-align: right; padding: 6px; }
+.grid thead tr:first-child th { font-weight: 400; color: var(--muted); text-align: center; border-bottom: 1px solid var(--line); padding: 0 0 4px; }
+.grid th[scope="row"], .grid thead tr:last-child th:first-child { text-align: left; padding-left: 0; }
+.grid td { padding: 0; }
+.cellbtn {
+  width: 100%; min-height: 34px; padding: 8px 6px; border: 0; border-radius: 2px; cursor: pointer;
+  background: var(--heat-lo);
+  background: color-mix(in oklab, var(--heat-hi) calc(var(--t, 0) * 100%), var(--heat-lo));
+  color: var(--ink); font: 12.5px var(--font-body); text-align: right; font-variant-numeric: tabular-nums;
+}
+@media (hover: hover) { .cellbtn:hover { box-shadow: inset 0 0 0 1px var(--ink); } }
+.cellbtn:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.cellbtn.cur { box-shadow: inset 0 0 0 2px var(--ink); font-weight: 700; }
+.cellbtn.open { box-shadow: inset 0 0 0 2px var(--growth); }
+.cellbtn.cur.open { box-shadow: inset 0 0 0 2px var(--ink), inset 0 0 0 4px var(--growth); }
+.grid-wrap { position: relative; }
+.pop { position: absolute; z-index: 3; width: 252px; max-width: calc(100% - 4px); box-sizing: border-box; padding: 12px 14px 14px; background: var(--tip-bg); border: 1px solid var(--line-strong); border-radius: 6px; box-shadow: 0 10px 28px var(--shadow); font-size: 13px; }
+.pop-title { margin: 0 0 8px; font-weight: 700; color: var(--ink); }
+.pop-dl { margin: 0; display: grid; grid-template-columns: auto auto; gap: 6px 16px; align-items: baseline; }
+.pop-dl dt { color: var(--head-ink); }
+.pop-dl dd { margin: 0; text-align: right; font-weight: 700; font-size: 15px; color: var(--ink); font-variant-numeric: tabular-nums; }
+.pop-dl dd.pop-real { justify-self: end; padding: 2px 8px; border-radius: 999px; background: var(--real-bg); color: var(--real-ink); font-size: 14px; }
+.pop-note { margin: 8px 0 0; font-size: 12px; line-height: 1.45; color: var(--muted); }
+
+
+@media (max-width: 600px) {
+  .chart svg { height: 240px; }
+}
+@media (max-width: 520px) {
+  .box { width: 136px; }
+  .mile b { flex-basis: 72px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .cellbtn { transition: box-shadow 120ms ease; }
+}
+</style>
+
+</head>
+<body>
+<main class="wrap">
+  <div class="sheet">
+    <noscript><p class="noscript">This preview can't run the calculator, so it shows the example values only. Open the page in Safari or another browser to change the inputs.</p></noscript>
+    <header class="sheet-head">
+      <h1>Investment growth calculator</h1>
+      <p class="sub">How starting capital, yearly contributions and returns compound over time.</p>
+    </header>
+
+    <div class="row">
+      <section class="inputs" aria-labelledby="inputs-h">
+        <h2 id="inputs-h">Your inputs</h2>
+        <p class="note">Example values to start. Edit any field and everything below updates as you type.</p>
+        <div class="fields">
+          <div class="field">
+            <label for="capital">Initial capital</label>
+            <div class="box"><span class="unit" aria-hidden="true">$</span><input id="capital" type="number" inputmode="decimal" min="0" step="1000" aria-invalid="false" value="10000"></div>
+            <input id="capital-range" type="range" min="0" max="500000" step="1000" aria-label="Initial capital slider" value="10000">
+            <p class="err" id="capital-err" hidden=""></p>
+          </div>
+          <div class="field">
+            <label for="contrib">Annual contribution</label>
+            <div class="box"><span class="unit" aria-hidden="true">$</span><input id="contrib" type="number" inputmode="decimal" min="0" step="1000" aria-invalid="false" value="6000"></div>
+            <input id="contrib-range" type="range" min="0" max="60000" step="1000" aria-label="Annual contribution slider" value="6000">
+            <p class="err" id="contrib-err" hidden=""></p>
+          </div>
+          <div class="field">
+            <label for="rate">Expected annual return</label>
+            <div class="box"><input id="rate" type="number" inputmode="decimal" min="-50" max="100" step="0.5" aria-invalid="false" value="7"><span class="unit after" aria-hidden="true">%</span></div>
+            <input id="rate-range" type="range" min="0" max="15" step="0.5" aria-label="Expected annual return slider" value="7">
+            <p class="err" id="rate-err" hidden=""></p>
+          </div>
+          <div class="field">
+            <label for="years">Number of years</label>
+            <div class="box"><input id="years" type="number" inputmode="numeric" min="1" max="30" step="1" aria-invalid="false" value="20"><span class="unit after" aria-hidden="true">yrs</span></div>
+            <input id="years-range" type="range" min="1" max="30" step="1" aria-label="Number of years slider" value="20">
+            <p class="err" id="years-err" hidden=""></p>
+          </div>
+        </div>
+        <div class="input-foot">
+          <p>Contributions are added at the end of each year. Returns compound once a year.</p>
+          <button type="button" class="textbtn" id="reset">Reset to example</button>
+        </div>
+      </section>
+
+      <section class="summary" aria-label="Summary">
+        <div>
+          <div class="big-row">
+            <div class="big" id="end-big" aria-live="polite">$284,670</div>
+            <div class="real-chip"><b id="end-real">$157,615</b><span>in today's dollars</span></div>
+            <div class="infl" role="group" aria-label="Inflation rate">
+              <button type="button" class="infl-btn" id="infl-down" aria-label="Lower inflation by 1%"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 7h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"></path></svg></button>
+              <span class="infl-val" id="infl-val" aria-live="polite">3% inflation</span>
+              <button type="button" class="infl-btn" id="infl-up" aria-label="Raise inflation by 1%"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 7h8M7 3v8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"></path></svg></button>
+            </div>
+          </div>
+          <p class="big-label" id="end-label">Ending balance after 20 years. Today's dollars assume 3% yearly inflation.</p>
+        </div>
+        <div class="split" id="split" role="img" aria-label="Ending balance $284,670: initial capital $10,000, contributions $120,000, growth from returns $154,670">
+          <div class="seg-initial" id="seg-initial" style="flex: 0.0351284 1 0px;"></div>
+          <div class="seg-invested" id="seg-contrib" style="flex: 0.421541 1 0px;"></div>
+          <div class="seg-growth" id="seg-growth" style="flex: 0.543331 1 0px;"></div>
+        </div>
+        <div class="legend-grid">
+          <div>
+            <div class="key"><span class="sw seg-initial" aria-hidden="true"></span>Initial capital</div>
+            <div class="amt" id="amt-initial">$10,000</div>
+            <div class="share" id="share-initial">4% of balance</div>
+          </div>
+          <div>
+            <div class="key"><span class="sw seg-invested" aria-hidden="true"></span>Contributions</div>
+            <div class="amt" id="amt-contrib">$120,000</div>
+            <div class="share" id="share-contrib">42% of balance</div>
+          </div>
+          <div>
+            <div class="key"><span class="sw seg-growth" aria-hidden="true"></span>Growth from returns</div>
+            <div class="amt" id="amt-growth">$154,670</div>
+            <div class="share" id="share-growth">54% of balance</div>
+          </div>
+        </div>
+        <div class="miles">
+          <div class="mile"><b id="m1-year">Year 10</b><span id="m1-text">From here on, returns add more each year than your $6,000 contribution.</span></div>
+          <div class="mile"><b id="m2-year">Year 18</b><span id="m2-text">Total growth passes everything you have invested so far.</span></div>
+        </div>
+      </section>
+    </div>
+
+    <section class="band" aria-labelledby="table-h">
+        <h2 id="table-h">Year-by-year growth</h2>
+        <p class="note" id="table-note">Amber cells mark the years returns beat your contribution, and when total growth passes everything invested. Today's dollars shows each end balance with 3% yearly inflation taken out.</p>
+        <div class="scroll">
+          <table class="years">
+            <caption class="sr">Year-by-year growth</caption>
+            <thead>
+              <tr>
+                <th scope="col">Year</th>
+                <th scope="col">Start balance</th>
+                <th scope="col">Contribution</th>
+                <th scope="col">Growth from returns</th>
+                <th scope="col">End balance</th>
+                <th scope="col" class="real">Today's dollars</th>
+                <th scope="col">Total invested</th>
+                <th scope="col">Total growth</th>
+                <th scope="col">Growth share</th>
+              </tr>
+            </thead>
+            <tbody id="year-rows"><tr><th scope="row">1</th><td>$10,000</td><td>$6,000</td><td>$700</td><td class="end">$16,700</td><td class="real">$16,214</td><td>$16,000</td><td>$700</td><td>4%</td></tr><tr><th scope="row">2</th><td>$16,700</td><td>$6,000</td><td>$1,169</td><td class="end">$23,869</td><td class="real">$22,499</td><td>$22,000</td><td>$1,869</td><td>8%</td></tr><tr><th scope="row">3</th><td>$23,869</td><td>$6,000</td><td>$1,671</td><td class="end">$31,540</td><td class="real">$28,863</td><td>$28,000</td><td>$3,540</td><td>11%</td></tr><tr><th scope="row">4</th><td>$31,540</td><td>$6,000</td><td>$2,208</td><td class="end">$39,748</td><td class="real">$35,315</td><td>$34,000</td><td>$5,748</td><td>14%</td></tr><tr><th scope="row">5</th><td>$39,748</td><td>$6,000</td><td>$2,782</td><td class="end">$48,530</td><td class="real">$41,862</td><td>$40,000</td><td>$8,530</td><td>18%</td></tr><tr><th scope="row">6</th><td>$48,530</td><td>$6,000</td><td>$3,397</td><td class="end">$57,927</td><td class="real">$48,513</td><td>$46,000</td><td>$11,927</td><td>21%</td></tr><tr><th scope="row">7</th><td>$57,927</td><td>$6,000</td><td>$4,055</td><td class="end">$67,982</td><td class="real">$55,276</td><td>$52,000</td><td>$15,982</td><td>24%</td></tr><tr><th scope="row">8</th><td>$67,982</td><td>$6,000</td><td>$4,759</td><td class="end">$78,741</td><td class="real">$62,159</td><td>$58,000</td><td>$20,741</td><td>26%</td></tr><tr><th scope="row">9</th><td>$78,741</td><td>$6,000</td><td>$5,512</td><td class="end">$90,253</td><td class="real">$69,171</td><td>$64,000</td><td>$26,253</td><td>29%</td></tr><tr><th scope="row">10</th><td>$90,253</td><td>$6,000</td><td class="hit">$6,318</td><td class="end">$102,570</td><td class="real">$76,322</td><td>$70,000</td><td>$32,570</td><td>32%</td></tr><tr><th scope="row">11</th><td>$102,570</td><td>$6,000</td><td class="hit">$7,180</td><td class="end">$115,750</td><td class="real">$83,620</td><td>$76,000</td><td>$39,750</td><td>34%</td></tr><tr><th scope="row">12</th><td>$115,750</td><td>$6,000</td><td class="hit">$8,103</td><td class="end">$129,853</td><td class="real">$91,076</td><td>$82,000</td><td>$47,853</td><td>37%</td></tr><tr><th scope="row">13</th><td>$129,853</td><td>$6,000</td><td class="hit">$9,090</td><td class="end">$144,942</td><td class="real">$98,699</td><td>$88,000</td><td>$56,942</td><td>39%</td></tr><tr><th scope="row">14</th><td>$144,942</td><td>$6,000</td><td class="hit">$10,146</td><td class="end">$161,088</td><td class="real">$106,498</td><td>$94,000</td><td>$67,088</td><td>42%</td></tr><tr><th scope="row">15</th><td>$161,088</td><td>$6,000</td><td class="hit">$11,276</td><td class="end">$178,364</td><td class="real">$114,485</td><td>$100,000</td><td>$78,364</td><td>44%</td></tr><tr><th scope="row">16</th><td>$178,364</td><td>$6,000</td><td class="hit">$12,486</td><td class="end">$196,850</td><td class="real">$122,670</td><td>$106,000</td><td>$90,850</td><td>46%</td></tr><tr><th scope="row">17</th><td>$196,850</td><td>$6,000</td><td class="hit">$13,779</td><td class="end">$216,629</td><td class="real">$131,064</td><td>$112,000</td><td>$104,629</td><td>48%</td></tr><tr><th scope="row">18</th><td>$216,629</td><td>$6,000</td><td class="hit">$15,164</td><td class="end">$237,794</td><td class="real">$139,679</td><td>$118,000</td><td class="hit">$119,794</td><td>50%</td></tr><tr><th scope="row">19</th><td>$237,794</td><td>$6,000</td><td class="hit">$16,646</td><td class="end">$260,439</td><td class="real">$148,525</td><td>$124,000</td><td class="hit">$136,439</td><td>52%</td></tr><tr><th scope="row">20</th><td>$260,439</td><td>$6,000</td><td class="hit">$18,231</td><td class="end">$284,670</td><td class="real">$157,615</td><td>$130,000</td><td class="hit">$154,670</td><td>54%</td></tr></tbody>
+            <tfoot>
+              <tr>
+                <th scope="row">Total</th>
+                <td></td>
+                <td id="t-contrib">$120,000</td>
+                <td id="t-growth">$154,670</td>
+                <td id="t-end">$284,670</td>
+                <td id="t-real" class="real">$157,615</td>
+                <td></td>
+                <td></td>
+                <td id="t-share">54%</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+    </section>
+
+    <section class="band" aria-labelledby="chart-h">
+          <h2 id="chart-h">Balance by year</h2>
+          <div class="chart-legend">
+            <span><span class="sw seg-invested" aria-hidden="true"></span>Total invested</span>
+            <span><span class="sw seg-growth" aria-hidden="true"></span>Growth from returns</span>
+          </div>
+          <div class="chart" id="chart">
+            <svg id="chart-svg" tabindex="0" role="img" aria-label="Stacked columns for 20 years. Final year: $130,000 invested plus $154,670 growth. The year-by-year table has every value." viewBox="0 0 1094 320"><rect class="hover-band" id="hover-band" x="0" y="10" width="51.9" height="286" visibility="hidden"></rect><text class="tick" x="44" y="296.5" text-anchor="end" dominant-baseline="middle">$0</text><line class="gridline" x1="52" x2="1090" y1="248.5" y2="248.5"></line><text class="tick" x="44" y="248.5" text-anchor="end" dominant-baseline="middle">$50k</text><line class="gridline" x1="52" x2="1090" y1="201.5" y2="201.5"></line><text class="tick" x="44" y="201.5" text-anchor="end" dominant-baseline="middle">$100k</text><line class="gridline" x1="52" x2="1090" y1="153.5" y2="153.5"></line><text class="tick" x="44" y="153.5" text-anchor="end" dominant-baseline="middle">$150k</text><line class="gridline" x1="52" x2="1090" y1="105.5" y2="105.5"></line><text class="tick" x="44" y="105.5" text-anchor="end" dominant-baseline="middle">$200k</text><line class="gridline" x1="52" x2="1090" y1="58.5" y2="58.5"></line><text class="tick" x="44" y="58.5" text-anchor="end" dominant-baseline="middle">$250k</text><line class="gridline" x1="52" x2="1090" y1="10.5" y2="10.5"></line><text class="tick" x="44" y="10.5" text-anchor="end" dominant-baseline="middle">$300k</text><rect class="bar-inv" x="60.304" y="280.74666666666667" width="35.292" height="15.25333333333333"></rect><path class="bar-gro" d="M60.304,280.74666666666667V280.74666666666667Q60.304,280.07933333333335 60.97133333333332,280.07933333333335H94.92866666666669Q95.596,280.07933333333335 95.596,280.74666666666667V280.74666666666667Z"></path><text class="tick" x="77.95" y="314" text-anchor="middle">1</text><rect class="bar-inv" x="112.20400000000001" y="275.02666666666664" width="35.292" height="20.973333333333358"></rect><path class="bar-gro" d="M112.20400000000001,275.02666666666664V275.02666666666664Q112.20400000000001,273.2448866666666 113.98578000000003,273.2448866666666H145.71421999999998Q147.496,273.2448866666666 147.496,275.02666666666664V275.02666666666664Z"></path><rect class="bar-inv" x="164.104" y="269.3066666666667" width="35.292" height="26.693333333333328"></rect><path class="bar-gro" d="M164.104,267.3066666666667V267.3066666666667Q164.104,265.9320287333333 165.47863793333337,265.9320287333333H198.02136206666665Q199.39600000000002,265.9320287333333 199.39600000000002,267.3066666666667V267.3066666666667Z"></path><rect class="bar-inv" x="216.004" y="263.58666666666664" width="35.292" height="32.413333333333355"></rect><path class="bar-gro" d="M216.004,261.58666666666664V261.58666666666664Q216.004,258.10727074466666 219.48339592199997,258.10727074466666H247.816604078Q251.296,258.10727074466666 251.296,261.58666666666664V261.58666666666664Z"></path><rect class="bar-inv" x="267.904" y="257.8666666666667" width="35.292" height="38.133333333333326"></rect><path class="bar-gro" d="M267.904,255.86666666666667V253.73477969679334Q267.904,249.73477969679334 271.904,249.73477969679334H299.196Q303.196,249.73477969679334 303.196,253.73477969679334V255.86666666666667Z"></path><text class="tick" x="285.54999999999995" y="314" text-anchor="middle">5</text><rect class="bar-inv" x="319.804" y="252.14666666666668" width="35.292" height="43.853333333333325"></rect><path class="bar-gro" d="M319.804,250.14666666666668V244.7762142755689Q319.804,240.7762142755689 323.804,240.7762142755689H351.096Q355.096,240.7762142755689 355.096,244.7762142755689V250.14666666666668Z"></path><rect class="bar-inv" x="371.70399999999995" y="246.42666666666668" width="35.292" height="49.57333333333332"></rect><path class="bar-gro" d="M371.70399999999995,244.42666666666668V235.1905492748587Q371.70399999999995,231.1905492748587 375.70399999999995,231.1905492748587H402.996Q406.996,231.1905492748587 406.996,235.1905492748587V244.42666666666668Z"></path><rect class="bar-inv" x="423.604" y="240.70666666666668" width="35.292" height="55.29333333333332"></rect><path class="bar-gro" d="M423.604,238.70666666666668V224.9338877240988Q423.604,220.9338877240988 427.604,220.9338877240988H454.89599999999996Q458.89599999999996,220.9338877240988 458.89599999999996,224.9338877240988V238.70666666666668Z"></path><rect class="bar-inv" x="475.50399999999996" y="234.98666666666668" width="35.292" height="61.01333333333332"></rect><path class="bar-gro" d="M475.50399999999996,232.98666666666668V213.95925986478574Q475.50399999999996,209.95925986478574 479.50399999999996,209.95925986478574H506.79599999999994Q510.79599999999994,209.95925986478574 510.79599999999994,213.95925986478574V232.98666666666668Z"></path><rect class="bar-inv" x="527.4039999999999" y="229.26666666666665" width="35.292" height="66.73333333333335"></rect><path class="bar-gro" d="M527.4039999999999,227.26666666666665V202.2164080553207Q527.4039999999999,198.2164080553207 531.4039999999999,198.2164080553207H558.6959999999999Q562.6959999999999,198.2164080553207 562.6959999999999,202.2164080553207V227.26666666666665Z"></path><text class="tick" x="545.05" y="314" text-anchor="middle">10</text><rect class="bar-inv" x="579.304" y="223.54666666666668" width="35.292" height="72.45333333333332"></rect><path class="bar-gro" d="M579.304,221.54666666666668V189.65155661919317Q579.304,185.65155661919317 583.304,185.65155661919317H610.596Q614.596,185.65155661919317 614.596,189.65155661919317V221.54666666666668Z"></path><rect class="bar-inv" x="631.204" y="217.82666666666665" width="35.292" height="78.17333333333335"></rect><path class="bar-gro" d="M631.204,215.82666666666665V176.20716558253665Q631.204,172.20716558253665 635.204,172.20716558253665H662.496Q666.496,172.20716558253665 666.496,176.20716558253665V215.82666666666665Z"></path><rect class="bar-inv" x="683.1039999999999" y="212.10666666666668" width="35.292" height="83.89333333333332"></rect><path class="bar-gro" d="M683.1039999999999,210.10666666666668V161.82166717331424Q683.1039999999999,157.82166717331424 687.1039999999999,157.82166717331424H714.396Q718.396,157.82166717331424 718.396,161.82166717331424V210.10666666666668Z"></path><rect class="bar-inv" x="735.0039999999999" y="206.38666666666666" width="35.292" height="89.61333333333334"></rect><path class="bar-gro" d="M735.0039999999999,204.38666666666666V146.4291838754462Q735.0039999999999,142.4291838754462 739.0039999999999,142.4291838754462H766.2959999999999Q770.2959999999999,142.4291838754462 770.2959999999999,146.4291838754462V204.38666666666666Z"></path><rect class="bar-inv" x="786.904" y="200.66666666666669" width="35.292" height="95.33333333333331"></rect><path class="bar-gro" d="M786.904,198.66666666666669V129.9592267467275Q786.904,125.9592267467275 790.904,125.9592267467275H818.196Q822.196,125.9592267467275 822.196,129.9592267467275V198.66666666666669Z"></path><text class="tick" x="804.55" y="314" text-anchor="middle">15</text><rect class="bar-inv" x="838.804" y="194.94666666666666" width="35.292" height="101.05333333333334"></rect><path class="bar-gro" d="M838.804,192.94666666666666V112.33637261899838Q838.804,108.33637261899838 842.804,108.33637261899838H870.096Q874.096,108.33637261899838 874.096,112.33637261899838V192.94666666666666Z"></path><rect class="bar-inv" x="890.704" y="189.22666666666666" width="35.292" height="106.77333333333334"></rect><path class="bar-gro" d="M890.704,187.22666666666666V93.47991870232826Q890.704,89.47991870232826 894.704,89.47991870232826H921.996Q925.996,89.47991870232826 925.996,93.47991870232826V187.22666666666666Z"></path><rect class="bar-inv" x="942.6039999999999" y="183.50666666666666" width="35.292" height="112.49333333333334"></rect><path class="bar-gro" d="M942.6039999999999,181.50666666666666V73.30351301149125Q942.6039999999999,69.30351301149125 946.6039999999999,69.30351301149125H973.896Q977.896,69.30351301149125 977.896,73.30351301149125V181.50666666666666Z"></path><rect class="bar-inv" x="994.5039999999999" y="177.78666666666666" width="35.292" height="118.21333333333334"></rect><path class="bar-gro" d="M994.5039999999999,175.78666666666666V51.71475892229563Q994.5039999999999,47.71475892229563 998.5039999999999,47.71475892229563H1025.7959999999998Q1029.7959999999998,47.71475892229563 1029.7959999999998,51.71475892229563V175.78666666666666Z"></path><rect class="bar-inv" x="1046.404" y="172.06666666666666" width="35.292" height="123.93333333333334"></rect><path class="bar-gro" d="M1046.404,170.06666666666666V28.61479204685628Q1046.404,24.61479204685628 1050.404,24.61479204685628H1077.696Q1081.696,24.61479204685628 1081.696,28.61479204685628V170.06666666666666Z"></path><text class="tick" x="1064.05" y="314" text-anchor="middle">20</text><line class="baseline" x1="52" x2="1090" y1="296.5" y2="296.5"></line></svg>
+            <div class="tip" id="tip" hidden=""></div>
+          </div>
+          <p class="chart-hint">Hover or tap a column to see that year. With a keyboard, focus the chart and use the arrow keys.</p>
+    </section>
+
+    <section class="band" aria-labelledby="whatif-h">
+          <h2 id="whatif-h">What if returns or contributions change</h2>
+          <p class="note" id="whatif-note">Ending balance after 20 years. The outlined cell matches your inputs. Select a cell to see its value in today's dollars.</p>
+          <div class="step" role="radiogroup" aria-labelledby="step-label">
+            <span class="step-label" id="step-label">Step between columns</span>
+            <div class="seg">
+              <label><input type="radio" name="step" id="step-3000" value="3000"><span>$3k</span></label>
+              <label><input type="radio" name="step" id="step-5000" value="5000" checked=""><span>$5k</span></label>
+              <label><input type="radio" name="step" id="step-7000" value="7000"><span>$7k</span></label>
+              <label><input type="radio" name="step" id="step-10000" value="10000"><span>$10k</span></label>
+              <label><input type="radio" name="step" id="step-15000" value="15000"><span>$15k</span></label>
+              <label><input type="radio" name="step" id="step-20000" value="20000"><span>$20k</span></label>
+            </div>
+          </div>
+          <div class="grid-wrap" id="grid-wrap">
+          <div class="whatif-scroll" id="whatif-scroll">
+            <table class="grid">
+              <caption class="sr">Ending balance by annual return and yearly contribution</caption>
+              <thead>
+                <tr><td></td><th scope="colgroup" colspan="7">Yearly contribution</th></tr>
+                <tr id="grid-head"><th scope="col">Return</th><th scope="col">$1,000</th><th scope="col">$6,000</th><th scope="col">$11,000</th><th scope="col">$16,000</th><th scope="col">$21,000</th><th scope="col">$26,000</th><th scope="col">$31,000</th></tr>
+              </thead>
+              <tbody id="grid-body"><tr><th scope="row">5.0%</th><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.000" data-rate="5" data-contrib="1000" aria-label="5.0% return and $1,000 a year: $59,599. Show details">$59,599</button></td><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.098" data-rate="5" data-contrib="6000" aria-label="5.0% return and $6,000 a year: $224,929. Show details">$224,929</button></td><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.197" data-rate="5" data-contrib="11000" aria-label="5.0% return and $11,000 a year: $390,258. Show details">$390,258</button></td><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.295" data-rate="5" data-contrib="16000" aria-label="5.0% return and $16,000 a year: $555,588. Show details">$555,588</button></td><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.394" data-rate="5" data-contrib="21000" aria-label="5.0% return and $21,000 a year: $720,918. Show details">$720,918</button></td><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.492" data-rate="5" data-contrib="26000" aria-label="5.0% return and $26,000 a year: $886,248. Show details">$886,248</button></td><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.591" data-rate="5" data-contrib="31000" aria-label="5.0% return and $31,000 a year: $1,051,578. Show details">$1,051,578</button></td></tr><tr><th scope="row">5.5%</th><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.003" data-rate="5.5" data-contrib="1000" aria-label="5.5% return and $1,000 a year: $64,046. Show details">$64,046</button></td><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.106" data-rate="5.5" data-contrib="6000" aria-label="5.5% return and $6,000 a year: $238,387. Show details">$238,387</button></td><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.210" data-rate="5.5" data-contrib="11000" aria-label="5.5% return and $11,000 a year: $412,729. Show details">$412,729</button></td><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.314" data-rate="5.5" data-contrib="16000" aria-label="5.5% return and $16,000 a year: $587,071. Show details">$587,071</button></td><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.418" data-rate="5.5" data-contrib="21000" aria-label="5.5% return and $21,000 a year: $761,412. Show details">$761,412</button></td><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.522" data-rate="5.5" data-contrib="26000" aria-label="5.5% return and $26,000 a year: $935,754. Show details">$935,754</button></td><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.625" data-rate="5.5" data-contrib="31000" aria-label="5.5% return and $31,000 a year: $1,110,095. Show details">$1,110,095</button></td></tr><tr><th scope="row">6.0%</th><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.006" data-rate="6" data-contrib="1000" aria-label="6.0% return and $1,000 a year: $68,857. Show details">$68,857</button></td><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.115" data-rate="6" data-contrib="6000" aria-label="6.0% return and $6,000 a year: $252,785. Show details">$252,785</button></td><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.225" data-rate="6" data-contrib="11000" aria-label="6.0% return and $11,000 a year: $436,713. Show details">$436,713</button></td><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.334" data-rate="6" data-contrib="16000" aria-label="6.0% return and $16,000 a year: $620,641. Show details">$620,641</button></td><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.444" data-rate="6" data-contrib="21000" aria-label="6.0% return and $21,000 a year: $804,569. Show details">$804,569</button></td><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.553" data-rate="6" data-contrib="26000" aria-label="6.0% return and $26,000 a year: $988,497. Show details">$988,497</button></td><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.663" data-rate="6" data-contrib="31000" aria-label="6.0% return and $31,000 a year: $1,172,425. Show details">$1,172,425</button></td></tr><tr><th scope="row">6.5%</th><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.009" data-rate="6.5" data-contrib="1000" aria-label="6.5% return and $1,000 a year: $74,062. Show details">$74,062</button></td><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.124" data-rate="6.5" data-contrib="6000" aria-label="6.5% return and $6,000 a year: $268,188. Show details">$268,188</button></td><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.240" data-rate="6.5" data-contrib="11000" aria-label="6.5% return and $11,000 a year: $462,315. Show details">$462,315</button></td><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.355" data-rate="6.5" data-contrib="16000" aria-label="6.5% return and $16,000 a year: $656,441. Show details">$656,441</button></td><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.471" data-rate="6.5" data-contrib="21000" aria-label="6.5% return and $21,000 a year: $850,568. Show details">$850,568</button></td><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.587" data-rate="6.5" data-contrib="26000" aria-label="6.5% return and $26,000 a year: $1,044,694. Show details">$1,044,694</button></td><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.702" data-rate="6.5" data-contrib="31000" aria-label="6.5% return and $31,000 a year: $1,238,821. Show details">$1,238,821</button></td></tr><tr><th scope="row">7.0%</th><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.012" data-rate="7" data-contrib="1000" aria-label="7.0% return and $1,000 a year: $79,692. Show details">$79,692</button></td><td><button type="button" class="cellbtn cur" aria-haspopup="dialog" aria-expanded="false" style="--t:0.134" data-rate="7" data-contrib="6000" aria-current="true" aria-label="7.0% return and $6,000 a year: $284,670, your current inputs. Show details">$284,670</button></td><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.256" data-rate="7" data-contrib="11000" aria-label="7.0% return and $11,000 a year: $489,647. Show details">$489,647</button></td><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.378" data-rate="7" data-contrib="16000" aria-label="7.0% return and $16,000 a year: $694,625. Show details">$694,625</button></td><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.500" data-rate="7" data-contrib="21000" aria-label="7.0% return and $21,000 a year: $899,602. Show details">$899,602</button></td><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.622" data-rate="7" data-contrib="26000" aria-label="7.0% return and $26,000 a year: $1,104,580. Show details">$1,104,580</button></td><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.744" data-rate="7" data-contrib="31000" aria-label="7.0% return and $31,000 a year: $1,309,557. Show details">$1,309,557</button></td></tr><tr><th scope="row">7.5%</th><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.016" data-rate="7.5" data-contrib="1000" aria-label="7.5% return and $1,000 a year: $85,783. Show details">$85,783</button></td><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.145" data-rate="7.5" data-contrib="6000" aria-label="7.5% return and $6,000 a year: $302,307. Show details">$302,307</button></td><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.273" data-rate="7.5" data-contrib="11000" aria-label="7.5% return and $11,000 a year: $518,830. Show details">$518,830</button></td><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.402" data-rate="7.5" data-contrib="16000" aria-label="7.5% return and $16,000 a year: $735,353. Show details">$735,353</button></td><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.531" data-rate="7.5" data-contrib="21000" aria-label="7.5% return and $21,000 a year: $951,877. Show details">$951,877</button></td><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.660" data-rate="7.5" data-contrib="26000" aria-label="7.5% return and $26,000 a year: $1,168,400. Show details">$1,168,400</button></td><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.789" data-rate="7.5" data-contrib="31000" aria-label="7.5% return and $31,000 a year: $1,384,924. Show details">$1,384,924</button></td></tr><tr><th scope="row">8.0%</th><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.020" data-rate="8" data-contrib="1000" aria-label="8.0% return and $1,000 a year: $92,372. Show details">$92,372</button></td><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.156" data-rate="8" data-contrib="6000" aria-label="8.0% return and $6,000 a year: $321,181. Show details">$321,181</button></td><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.292" data-rate="8" data-contrib="11000" aria-label="8.0% return and $11,000 a year: $549,991. Show details">$549,991</button></td><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.428" data-rate="8" data-contrib="16000" aria-label="8.0% return and $16,000 a year: $778,801. Show details">$778,801</button></td><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.564" data-rate="8" data-contrib="21000" aria-label="8.0% return and $21,000 a year: $1,007,611. Show details">$1,007,611</button></td><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.701" data-rate="8" data-contrib="26000" aria-label="8.0% return and $26,000 a year: $1,236,421. Show details">$1,236,421</button></td><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.837" data-rate="8" data-contrib="31000" aria-label="8.0% return and $31,000 a year: $1,465,230. Show details">$1,465,230</button></td></tr><tr><th scope="row">8.5%</th><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.024" data-rate="8.5" data-contrib="1000" aria-label="8.5% return and $1,000 a year: $99,497. Show details">$99,497</button></td><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.168" data-rate="8.5" data-contrib="6000" aria-label="8.5% return and $6,000 a year: $341,383. Show details">$341,383</button></td><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.312" data-rate="8.5" data-contrib="11000" aria-label="8.5% return and $11,000 a year: $583,268. Show details">$583,268</button></td><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.456" data-rate="8.5" data-contrib="16000" aria-label="8.5% return and $16,000 a year: $825,153. Show details">$825,153</button></td><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.600" data-rate="8.5" data-contrib="21000" aria-label="8.5% return and $21,000 a year: $1,067,038. Show details">$1,067,038</button></td><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.744" data-rate="8.5" data-contrib="26000" aria-label="8.5% return and $26,000 a year: $1,308,923. Show details">$1,308,923</button></td><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.888" data-rate="8.5" data-contrib="31000" aria-label="8.5% return and $31,000 a year: $1,550,808. Show details">$1,550,808</button></td></tr><tr><th scope="row">9.0%</th><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.028" data-rate="9" data-contrib="1000" aria-label="9.0% return and $1,000 a year: $107,204. Show details">$107,204</button></td><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.181" data-rate="9" data-contrib="6000" aria-label="9.0% return and $6,000 a year: $363,005. Show details">$363,005</button></td><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.333" data-rate="9" data-contrib="11000" aria-label="9.0% return and $11,000 a year: $618,805. Show details">$618,805</button></td><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.485" data-rate="9" data-contrib="16000" aria-label="9.0% return and $16,000 a year: $874,606. Show details">$874,606</button></td><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.638" data-rate="9" data-contrib="21000" aria-label="9.0% return and $21,000 a year: $1,130,407. Show details">$1,130,407</button></td><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.790" data-rate="9" data-contrib="26000" aria-label="9.0% return and $26,000 a year: $1,386,207. Show details">$1,386,207</button></td><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.942" data-rate="9" data-contrib="31000" aria-label="9.0% return and $31,000 a year: $1,642,008. Show details">$1,642,008</button></td></tr><tr><th scope="row">9.5%</th><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.033" data-rate="9.5" data-contrib="1000" aria-label="9.5% return and $1,000 a year: $115,538. Show details">$115,538</button></td><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.194" data-rate="9.5" data-contrib="6000" aria-label="9.5% return and $6,000 a year: $386,150. Show details">$386,150</button></td><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.356" data-rate="9.5" data-contrib="11000" aria-label="9.5% return and $11,000 a year: $656,761. Show details">$656,761</button></td><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.517" data-rate="9.5" data-contrib="16000" aria-label="9.5% return and $16,000 a year: $927,372. Show details">$927,372</button></td><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.678" data-rate="9.5" data-contrib="21000" aria-label="9.5% return and $21,000 a year: $1,197,983. Show details">$1,197,983</button></td><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:0.839" data-rate="9.5" data-contrib="26000" aria-label="9.5% return and $26,000 a year: $1,468,594. Show details">$1,468,594</button></td><td><button type="button" class="cellbtn" aria-haspopup="dialog" aria-expanded="false" style="--t:1.000" data-rate="9.5" data-contrib="31000" aria-label="9.5% return and $31,000 a year: $1,739,205. Show details">$1,739,205</button></td></tr></tbody>
+            </table>
+          </div>
+          <div class="pop" id="pop" role="dialog" aria-labelledby="pop-title" hidden="">
+            <p class="pop-title" id="pop-title"></p>
+            <dl class="pop-dl">
+              <dt>Ending balance</dt><dd id="pop-nom"></dd>
+              <dt>In today's dollars</dt><dd class="pop-real" id="pop-real"></dd>
+            </dl>
+            <p class="pop-note" id="pop-note"></p>
+          </div>
+          </div>
+    </section>
+  </div>
+</main>
+
+<script>
+(function () {
+  "use strict";
+  var DEFAULTS = { capital: 10000, contrib: 6000, rate: 7, years: 20, inflation: 3 };
+  var KEY = "investment-growth-calculator-v1";
+  var usd = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0, minimumFractionDigits: 0 });
+  function money(n) { return usd.format(Math.round(n) || 0); }
+  function trim(n, d) { return String(parseFloat(n.toFixed(d))); }
+  function shortMoney(n) {
+    if (n >= 1e6) return "$" + trim(n / 1e6, 2) + "M";
+    if (n >= 1e3) return "$" + trim(n / 1e3, 1) + "k";
+    return "$" + Math.round(n);
+  }
+  function gridMoney(n) { return money(n); }
+  function pctLabel(n) { return n.toFixed(1) + "%"; }
+  function $(id) { return document.getElementById(id); }
+
+  var fields = {
+    capital: { el: $("capital"), range: $("capital-range"), err: $("capital-err") },
+    contrib: { el: $("contrib"), range: $("contrib-range"), err: $("contrib-err") },
+    rate: { el: $("rate"), range: $("rate-range"), err: $("rate-err") },
+    years: { el: $("years"), range: $("years-range"), err: $("years-err") }
+  };
+
+  function getStep() {
+    var el = document.querySelector("input[name=\"step\"]:checked");
+    return el ? parseFloat(el.value) : 5000;
+  }
+  function setStep(v) {
+    var el = document.getElementById("step-" + v);
+    if (el) el.checked = true;
+  }
+
+  function load() {
+    try {
+      var saved = JSON.parse(localStorage.getItem(KEY) || "null");
+      if (saved && typeof saved === "object") return saved;
+    } catch (e) {}
+    return null;
+  }
+  function save(v) {
+    try { localStorage.setItem(KEY, JSON.stringify(v)); } catch (e) {}
+  }
+
+  function setField(name, value) {
+    var f = fields[name];
+    f.el.value = value;
+    syncRange(name);
+  }
+  function syncRange(name) {
+    var f = fields[name];
+    var n = parseFloat(f.el.value);
+    if (!isFinite(n)) n = 0;
+    var lo = parseFloat(f.range.min), hi = parseFloat(f.range.max);
+    f.range.value = Math.min(hi, Math.max(lo, n));
+  }
+  function showErr(name, msg) {
+    var f = fields[name];
+    f.err.textContent = msg || "";
+    f.err.hidden = !msg;
+    f.el.setAttribute("aria-invalid", msg ? "true" : "false");
+    if (msg) f.el.setAttribute("aria-describedby", f.err.id); else f.el.removeAttribute("aria-describedby");
+  }
+
+  function readInputs() {
+    var raw = {};
+    Object.keys(fields).forEach(function (k) { raw[k] = fields[k].el.value; });
+    var num = function (s) { var n = parseFloat(s); return isFinite(n) ? n : null; };
+
+    var capital = num(raw.capital), contrib = num(raw.contrib), rate = num(raw.rate), years = num(raw.years);
+    showErr("capital", capital !== null && capital < 0 ? "Enter an amount of 0 or more. Using $0 for now." : "");
+    showErr("contrib", contrib !== null && contrib < 0 ? "Enter an amount of 0 or more. Using $0 for now." : "");
+    var rateBad = rate !== null && (rate < -50 || rate > 100);
+    showErr("rate", rateBad ? "Enter a yearly return between -50% and 100%." : "");
+    var yearsBad = raw.years !== "" && (years === null || years < 1 || years > 30 || Math.round(years) !== years);
+    showErr("years", yearsBad ? "Enter a whole number of years from 1 to 30." : "");
+
+    return {
+      capital: Math.max(0, capital || 0),
+      contrib: Math.max(0, contrib || 0),
+      rate: Math.min(100, Math.max(-50, rate || 0)),
+      years: Math.min(30, Math.max(1, Math.round(years || 1)))
+    };
+  }
+
+  function compute(P, C, r, N) {
+    var bal = P, totIn = P, totG = 0, y1 = null, y2 = null, rows = [];
+    for (var y = 1; y <= N; y++) {
+      var start = bal, g = start * r, end = start + g + C;
+      totIn += C; totG += g;
+      var gHit = C > 0 && g > C, tHit = totG > totIn;
+      if (gHit && y1 === null) y1 = y;
+      if (tHit && y2 === null) y2 = y;
+      rows.push({ y: y, start: start, g: g, end: end, totIn: totIn, totG: totG, gHit: gHit, tHit: tHit });
+      bal = end;
+    }
+    return { rows: rows, y1: y1, y2: y2, end: bal, totG: totG, totIn: totIn };
+  }
+  function fv(P, C, r, N) { var b = P; for (var i = 0; i < N; i++) b = b * (1 + r) + C; return b; }
+
+  var state = null;
+  var INFL_MIN = 0, INFL_MAX = 10;
+  var inflation = DEFAULTS.inflation;
+  function setInflation(n) {
+    n = Math.round(parseFloat(n));
+    inflation = isFinite(n) ? Math.min(INFL_MAX, Math.max(INFL_MIN, n)) : DEFAULTS.inflation;
+    $("infl-val").textContent = inflation + "% inflation";
+    $("infl-down").disabled = inflation <= INFL_MIN;
+    $("infl-up").disabled = inflation >= INFL_MAX;
+  }
+
+  function render() {
+    var v = readInputs();
+    var P = v.capital, C = v.contrib, r = v.rate / 100, N = v.years;
+    var res = compute(P, C, r, N);
+    var inf = inflation / 100;
+    var realOf = function (n, yr) { return n / Math.pow(1 + inf, yr); };
+    if (typeof closePop === "function") closePop(false);
+    state = { v: v, res: res, inf: inf };
+    save({ capital: fields.capital.el.value, contrib: fields.contrib.el.value, rate: fields.rate.el.value, years: fields.years.el.value, inflation: inflation, step: getStep() });
+
+    var yearsLabel = N + (N === 1 ? " year" : " years");
+    var end = res.end, conTotal = C * N;
+    $("end-big").textContent = money(end);
+    $("end-label").textContent = "Ending balance after " + yearsLabel + ". Today's dollars assume " + (inflation + "%") + " yearly inflation.";
+    $("end-real").textContent = money(realOf(end, N));
+
+    // split bar and legend
+    var parts = [["initial", P], ["contrib", conTotal], ["growth", Math.max(0, res.totG)]];
+    var sum = parts.reduce(function (s, p) { return s + p[1]; }, 0);
+    parts.forEach(function (p) {
+      var seg = $("seg-" + p[0]);
+      var share = sum > 0 ? p[1] / sum : 0;
+      seg.style.flex = share > 0 ? share + " 1 0" : "0 0 0";
+      seg.hidden = !(p[1] > 0);
+    });
+    var shareOf = function (x) { return end > 0 ? Math.round(x / end * 100) : 0; };
+    $("amt-initial").textContent = money(P);
+    $("amt-contrib").textContent = money(conTotal);
+    $("amt-growth").textContent = money(res.totG);
+    $("share-initial").textContent = shareOf(P) + "% of balance";
+    $("share-contrib").textContent = shareOf(conTotal) + "% of balance";
+    $("share-growth").textContent = shareOf(res.totG) + "% of balance";
+    $("split").setAttribute("aria-label", "Ending balance " + money(end) + ": initial capital " + money(P) +
+      ", contributions " + money(conTotal) + ", growth from returns " + money(res.totG));
+
+    // milestones
+    if (C === 0) {
+      $("m1-year").textContent = "n/a";
+      $("m1-text").textContent = "Add a yearly contribution to see when returns overtake it.";
+    } else if (res.y1) {
+      $("m1-year").textContent = "Year " + res.y1;
+      $("m1-text").textContent = "From here on, returns add more each year than your " + money(C) + " contribution.";
+    } else {
+      $("m1-year").textContent = "Not yet";
+      $("m1-text").textContent = "Within " + yearsLabel + ", yearly returns stay below your " + money(C) + " contribution.";
+    }
+    if (res.y2) {
+      $("m2-year").textContent = "Year " + res.y2;
+      $("m2-text").textContent = "Total growth passes everything you have invested so far.";
+    } else {
+      $("m2-year").textContent = "Not yet";
+      $("m2-text").textContent = "Within " + yearsLabel + ", total growth stays below what you invested.";
+    }
+
+    // year table
+    var html = "";
+    res.rows.forEach(function (d) {
+      html += "<tr><th scope=\"row\">" + d.y + "</th>" +
+        "<td>" + money(d.start) + "</td>" +
+        "<td>" + money(C) + "</td>" +
+        "<td" + (d.gHit ? " class=\"hit\"" : "") + ">" + money(d.g) + "</td>" +
+        "<td class=\"end\">" + money(d.end) + "</td>" +
+        "<td class=\"real\">" + money(realOf(d.end, d.y)) + "</td>" +
+        "<td>" + money(d.totIn) + "</td>" +
+        "<td" + (d.tHit ? " class=\"hit\"" : "") + ">" + money(d.totG) + "</td>" +
+        "<td>" + (d.end > 0 ? Math.round(d.totG / d.end * 100) : 0) + "%</td></tr>";
+    });
+    $("year-rows").innerHTML = html;
+    $("t-contrib").textContent = money(conTotal);
+    $("t-growth").textContent = money(res.totG);
+    $("t-end").textContent = money(end);
+    $("t-real").textContent = money(realOf(end, N));
+    $("table-note").textContent = "Amber cells mark the years returns beat your contribution, and when total growth passes everything invested. " +
+      "Today's dollars shows each end balance with " + (inflation + "%") + " yearly inflation taken out.";
+    $("t-share").textContent = shareOf(res.totG) + "%";
+
+    renderGrid(P, C, v.rate, N, yearsLabel);
+    drawChart();
+  }
+
+  function renderGrid(P, C, ratePct, N, yearsLabel) {
+    var stepAmt = getStep();
+    // your contribution sits in the middle column when it can; columns shift right so none go below $0
+    var off = Math.min(3, Math.floor(C / stepAmt));
+    var cols = [0, 1, 2, 3, 4, 5, 6].map(function (k) { return C + (k - off) * stepAmt; });
+    var curRate = Math.round(ratePct * 10) / 10;
+    var rates = [-2, -1.5, -1, -0.5, 0, 0.5, 1, 1.5, 2, 2.5].map(function (d) { return Math.round((ratePct + d) * 10) / 10; })
+      .filter(function (x) { return x >= -50; });
+    var vals = rates.map(function (rr) { return cols.map(function (c) { return fv(P, c, rr / 100, N); }); });
+    var flat = [].concat.apply([], vals);
+    var lo = Math.min.apply(null, flat), hi = Math.max.apply(null, flat);
+
+    $("whatif-note").textContent = "Ending balance after " + yearsLabel + ". " +
+      "The outlined cell matches your inputs. Select a cell to see its value in today's dollars.";
+
+    var head = "<th scope=\"col\">Return</th>";
+    cols.forEach(function (c) { head += "<th scope=\"col\">" + money(c) + "</th>"; });
+    $("grid-head").innerHTML = head;
+
+    var body = "";
+    rates.forEach(function (rr, i) {
+      body += "<tr><th scope=\"row\">" + pctLabel(rr) + "</th>";
+      cols.forEach(function (c, j) {
+        var val = vals[i][j];
+        var t = hi > lo ? (val - lo) / (hi - lo) : 0;
+        var cur = rr === curRate && j === off;
+        body += "<td><button type=\"button\" class=\"cellbtn" + (cur ? " cur" : "") + "\" aria-haspopup=\"dialog\" aria-expanded=\"false\" style=\"--t:" + t.toFixed(3) + "\"" +
+          " data-rate=\"" + rr + "\" data-contrib=\"" + c + "\"" +
+          (cur ? " aria-current=\"true\"" : "") +
+          " aria-label=\"" + pctLabel(rr) + " return and " + money(c) + " a year: " + money(val) + (cur ? ", your current inputs" : "") + ". Show details\">" +
+          gridMoney(val) + "</button></td>";
+      });
+      body += "</tr>";
+    });
+    $("grid-body").innerHTML = body;
+  }
+
+  var pop = $("pop"), popBtn = null;
+  function closePop(returnFocus) {
+    if (pop.hidden) return;
+    pop.hidden = true;
+    if (popBtn) {
+      popBtn.classList.remove("open");
+      popBtn.setAttribute("aria-expanded", "false");
+      if (returnFocus) popBtn.focus();
+    }
+    popBtn = null;
+  }
+  function openPop(btn) {
+    if (!state) return;
+    closePop(false);
+    var rr = parseFloat(btn.getAttribute("data-rate")), c = parseFloat(btn.getAttribute("data-contrib"));
+    var N = state.v.years, nom = fv(state.v.capital, c, rr / 100, N), real = nom / Math.pow(1 + state.inf, N);
+    var isCur = btn.classList.contains("cur");
+    $("pop-title").textContent = pctLabel(rr) + " return, " + money(c) + " a year";
+    $("pop-nom").textContent = money(nom);
+    $("pop-real").textContent = money(real);
+    $("pop-note").textContent = "After " + N + (N === 1 ? " year" : " years") + ", with " + inflation + "% yearly inflation taken out." +
+      (isCur ? " These are your current inputs." : "");
+    popBtn = btn;
+    btn.classList.add("open");
+    btn.setAttribute("aria-expanded", "true");
+    pop.hidden = false;
+    var wrap = $("grid-wrap").getBoundingClientRect(), r = btn.getBoundingClientRect();
+    var pw = pop.offsetWidth, ph = pop.offsetHeight;
+    var left = r.left - wrap.left + r.width / 2 - pw / 2;
+    left = Math.max(0, Math.min(left, wrap.width - pw));
+    var top = r.bottom - wrap.top + 6;
+    if (top + ph > wrap.height + 24 && r.top - wrap.top - ph - 6 >= 0) top = r.top - wrap.top - ph - 6;
+    pop.style.left = left + "px";
+    pop.style.top = top + "px";
+  }
+  $("grid-body").addEventListener("click", function (e) {
+    var btn = e.target.closest(".cellbtn");
+    if (!btn) return;
+    if (btn === popBtn) closePop(false); else openPop(btn);
+  });
+  document.addEventListener("pointerdown", function (e) {
+    if (pop.hidden) return;
+    if (pop.contains(e.target) || e.target.closest(".cellbtn")) return;
+    closePop(false);
+  });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") closePop(true); });
+  $("whatif-scroll").addEventListener("scroll", function () { closePop(false); }, { passive: true });
+  window.addEventListener("resize", function () { closePop(false); });
+
+  // ---- chart ----
+  var svg = $("chart-svg"), tip = $("tip"), chartBox = $("chart");
+  var geo = null, active = -1;
+
+  function niceScale(maxV) {
+    maxV = Math.max(1, maxV);
+    var pow = Math.pow(10, Math.floor(Math.log10(maxV)));
+    var ratio = maxV / pow;
+    var unit = ratio <= 2 ? pow / 4 : (ratio <= 5 ? pow / 2 : pow);
+    var top = Math.ceil(maxV / unit) * unit;
+    if (top / unit > 6) { unit *= 2; top = Math.ceil(maxV / unit) * unit; }
+    return { unit: unit, top: top };
+  }
+  function topRounded(x, y, w, h, r) {
+    r = Math.max(0, Math.min(r, w / 2, h));
+    return "M" + x + "," + (y + h) + "V" + (y + r) + "Q" + x + "," + y + " " + (x + r) + "," + y +
+      "H" + (x + w - r) + "Q" + (x + w) + "," + y + " " + (x + w) + "," + (y + r) + "V" + (y + h) + "Z";
+  }
+
+  function drawChart() {
+    if (!state) return;
+    var rows = state.res.rows, N = rows.length;
+    var W = Math.max(260, chartBox.clientWidth), H = Math.round(svg.getBoundingClientRect().height) || 320;
+    var m = { l: 52, r: 4, t: 10, b: 24 };
+    var pw = W - m.l - m.r, ph = H - m.t - m.b;
+    var maxV = 0;
+    rows.forEach(function (d) { maxV = Math.max(maxV, d.end, d.totIn); });
+    var s = niceScale(maxV);
+    var y = function (v) { return m.t + ph - (v / s.top) * ph; };
+    var band = pw / N, gap = band > 16 ? band * 0.32 : Math.min(2, band * 0.3), bw = Math.max(1, band - gap);
+    var baseY = m.t + ph;
+
+    var out = "<rect class=\"hover-band\" id=\"hover-band\" x=\"0\" y=\"" + m.t + "\" width=\"" + band + "\" height=\"" + ph + "\" visibility=\"hidden\"></rect>";
+    for (var v = 0; v <= s.top + 1e-6; v += s.unit) {
+      var yy = Math.round(y(v)) + 0.5;
+      if (v > 0) out += "<line class=\"gridline\" x1=\"" + m.l + "\" x2=\"" + (W - m.r) + "\" y1=\"" + yy + "\" y2=\"" + yy + "\"></line>";
+      out += "<text class=\"tick\" x=\"" + (m.l - 8) + "\" y=\"" + yy + "\" text-anchor=\"end\" dominant-baseline=\"middle\">" + shortMoney(v) + "</text>";
+    }
+    var step = N <= 10 ? 1 : 5;
+    rows.forEach(function (d, i) {
+      var x = m.l + i * band + gap / 2;
+      var invested = Math.min(d.totIn, d.end);
+      var hI = Math.max(0, baseY - y(invested));
+      var hG = Math.max(0, baseY - y(Math.max(0, d.end - invested))) ;
+      var segGap = hG > 3 ? 2 : 0;
+      var gH = Math.max(0, hG - segGap);
+      if (gH > 0.5) {
+        out += "<rect class=\"bar-inv\" x=\"" + x + "\" y=\"" + (baseY - hI) + "\" width=\"" + bw + "\" height=\"" + hI + "\"></rect>";
+        out += "<path class=\"bar-gro\" d=\"" + topRounded(x, baseY - hI - hG, bw, gH, 4) + "\"></path>";
+      } else if (hI > 0) {
+        out += "<path class=\"bar-inv\" d=\"" + topRounded(x, baseY - hI, bw, hI, 4) + "\"></path>";
+      }
+      if (d.y === 1 || d.y % step === 0) {
+        out += "<text class=\"tick\" x=\"" + (m.l + (i + 0.5) * band) + "\" y=\"" + (H - 6) + "\" text-anchor=\"middle\">" + d.y + "</text>";
+      }
+    });
+    out += "<line class=\"baseline\" x1=\"" + m.l + "\" x2=\"" + (W - m.r) + "\" y1=\"" + (baseY + 0.5) + "\" y2=\"" + (baseY + 0.5) + "\"></line>";
+    svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+    svg.innerHTML = out;
+    var last = rows[N - 1];
+    svg.setAttribute("aria-label", "Stacked columns for " + N + " years. Final year: " + money(Math.min(last.totIn, last.end)) +
+      " invested plus " + money(Math.max(0, last.totG)) + " growth. The year-by-year table has every value.");
+    geo = { m: m, band: band, W: W, N: N };
+    if (active >= N) active = -1;
+    if (active >= 0) showTip(active); else hideTip();
+  }
+
+  function showTip(i) {
+    if (!geo || !state) return;
+    var d = state.res.rows[i];
+    active = i;
+    var hb = document.getElementById("hover-band");
+    if (hb) { hb.setAttribute("x", geo.m.l + i * geo.band); hb.setAttribute("visibility", "visible"); }
+    tip.innerHTML = "<h3>Year " + d.y + "</h3><dl>" +
+      "<dt>End balance</dt><dd>" + money(d.end) + "</dd>" +
+      "<dt>Today's dollars</dt><dd>" + money(d.end / Math.pow(1 + state.inf, d.y)) + "</dd>" +
+      "<dt><span class=\"sw seg-invested\"></span>Total invested</dt><dd>" + money(d.totIn) + "</dd>" +
+      "<dt><span class=\"sw seg-growth\"></span>Growth</dt><dd>" + money(d.totG) + "</dd></dl>";
+    tip.hidden = false;
+    var cx = geo.m.l + (i + 0.5) * geo.band;
+    var tw = tip.offsetWidth;
+    var left = cx + 12;
+    if (left + tw > geo.W) left = cx - 12 - tw;
+    tip.style.left = Math.max(0, left) + "px";
+  }
+  function hideTip() {
+    active = -1;
+    tip.hidden = true;
+    var hb = document.getElementById("hover-band");
+    if (hb) hb.setAttribute("visibility", "hidden");
+  }
+  function indexAt(clientX) {
+    var rect = svg.getBoundingClientRect();
+    var scale = geo.W / rect.width;
+    var x = (clientX - rect.left) * scale - geo.m.l;
+    var i = Math.floor(x / geo.band);
+    return i >= 0 && i < geo.N ? i : -1;
+  }
+  svg.addEventListener("pointermove", function (e) {
+    if (!geo) return;
+    var i = indexAt(e.clientX);
+    if (i < 0) hideTip(); else if (i !== active) showTip(i);
+  });
+  svg.addEventListener("pointerdown", function (e) {
+    if (!geo || e.pointerType === "mouse") return;
+    var i = indexAt(e.clientX);
+    if (i >= 0) showTip(i);
+  });
+  svg.addEventListener("pointerleave", function (e) {
+    if (e.pointerType !== "mouse") return;  // a finger lifting off keeps the tip open
+    if (document.activeElement !== svg) hideTip();
+  });
+  document.addEventListener("pointerdown", function (e) {
+    if (e.pointerType !== "mouse" && !svg.contains(e.target)) hideTip();
+  });
+  svg.addEventListener("focus", function () { showTip(active >= 0 ? active : geo.N - 1); });
+  svg.addEventListener("blur", hideTip);
+  svg.addEventListener("keydown", function (e) {
+    if (!geo) return;
+    var i = active < 0 ? geo.N - 1 : active;
+    if (e.key === "ArrowLeft") i = Math.max(0, i - 1);
+    else if (e.key === "ArrowRight") i = Math.min(geo.N - 1, i + 1);
+    else if (e.key === "Home") i = 0;
+    else if (e.key === "End") i = geo.N - 1;
+    else if (e.key === "Escape") { hideTip(); return; }
+    else return;
+    e.preventDefault();
+    showTip(i);
+  });
+  if (window.ResizeObserver) new ResizeObserver(function () { drawChart(); }).observe(chartBox);
+  else window.addEventListener("resize", drawChart);
+
+  // ---- wiring ----
+  Object.keys(fields).forEach(function (name) {
+    var f = fields[name];
+    f.el.addEventListener("input", function () { syncRange(name); render(); });
+    f.range.addEventListener("input", function () { f.el.value = f.range.value; render(); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("input[name=\"step\"]"), function (el) {
+    el.addEventListener("change", render);
+  });
+  $("reset").addEventListener("click", function () {
+    Object.keys(fields).forEach(function (k) { setField(k, DEFAULTS[k]); });
+    setInflation(DEFAULTS.inflation);
+    setStep(5000);
+    render();
+  });
+
+  $("infl-down").addEventListener("click", function () { setInflation(inflation - 1); render(); });
+  $("infl-up").addEventListener("click", function () { setInflation(inflation + 1); render(); });
+
+  var saved = load() || {};
+  setInflation(saved.inflation !== undefined && saved.inflation !== "" ? saved.inflation : DEFAULTS.inflation);
+  Object.keys(fields).forEach(function (k) {
+    var val = saved[k] !== undefined && saved[k] !== "" ? saved[k] : DEFAULTS[k];
+    if (k === "years" && parseFloat(val) > 30) val = 30;
+    setField(k, val);
+  });
+  if (saved.step) setStep(saved.step);
+  render();
+})();
+</script>
+
+</body>
+</html>
